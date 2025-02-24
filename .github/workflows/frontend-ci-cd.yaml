@@ -1,0 +1,107 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - develop
+      - qa
+      - staging
+      - demo
+      - production
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+
+  build:
+    name: Build App
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Expo CLI
+        run: npm install -g expo-cli
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app for environment
+        run: |
+          case ${GITHUB_REF##*/} in
+            qa)
+              expo build:ios --release-channel qa
+              ;;
+            staging)
+              expo build:ios --release-channel staging
+              ;;
+            demo)
+              expo build:ios --release-channel demo
+              ;;
+            production)
+              expo build:ios --release-channel production
+              ;;
+            *)
+              echo "No build for this branch"
+              ;;
+          esac
+
+  deploy:
+    name: Deploy to Environment
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Expo CLI
+        run: npm install -g expo-cli
+
+      - name: Deploy to environment
+        run: |
+          case ${GITHUB_REF##*/} in
+            qa)
+              expo publish --release-channel qa
+              ;;
+            staging)
+              expo publish --release-channel staging
+              ;;
+            demo)
+              expo publish --release-channel demo
+              ;;
+            production)
+              expo publish --release-channel production
+              ;;
+            *)
+              echo "No deployment for this branch"
+              ;;
+          esac
